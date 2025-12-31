@@ -74,7 +74,11 @@
 
         <div class="filter-section">
           <h3>Dung lượng (KB)</h3>
-          <div class="size-inputs">
+          <label class="checkbox-label">
+            <input type="checkbox" id="enableSizeFilter">
+            <span>Lọc theo dung lượng</span>
+          </label>
+          <div id="sizeFilterInputs" class="size-inputs hidden">
             <div class="input-group">
               <div class="range-inputs">
                 <input type="number" id="minSize" placeholder="Min KB" min="0">
@@ -96,6 +100,8 @@
         <div class="results-header">
           <h3>Kết quả <span id="resultCount">(0 ảnh)</span></h3>
           <div class="results-actions">
+            <button id="btnCopyTo" class="btn btn-primary" disabled>Copy ảnh</button>
+            <button id="btnMoveTo" class="btn btn-warning" disabled>Di chuyển ảnh</button>
             <button id="btnExport" class="btn btn-secondary" disabled>Xuất danh sách</button>
             <button id="btnCopyPaths" class="btn btn-secondary" disabled>Copy đường dẫn</button>
           </div>
