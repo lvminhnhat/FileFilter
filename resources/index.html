@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Filter - Lọc Ảnh</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <h1>File Filter</h1>
+      <p>Công cụ lọc ảnh theo kích thước và dung lượng</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Left Panel - Filters -->
+      <aside class="filter-panel">
+        <div class="filter-section">
+          <h3>Thư mục</h3>
+          <div class="folder-select">
+            <input type="text" id="folderPath" placeholder="Chọn thư mục..." readonly>
+            <button id="btnSelectFolder" class="btn btn-primary">Chọn</button>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeSubfolders" checked>
+            <span>Bao gồm thư mục con</span>
+          </label>
+        </div>
+
+        <div class="filter-section">
+          <h3>Định dạng ảnh</h3>
+          <div class="format-options">
+            <label class="checkbox-label">
+              <input type="checkbox" id="formatAll" checked>
+              <span>Tất cả định dạng</span>
+            </label>
+            <div id="formatList" class="format-list hidden">
+              <label class="checkbox-label"><input type="checkbox" value="jpg" checked><span>JPG/JPEG</span></label>
+              <label class="checkbox-label"><input type="checkbox" value="png" checked><span>PNG</span></label>
+              <label class="checkbox-label"><input type="checkbox" value="gif" checked><span>GIF</span></label>
+              <label class="checkbox-label"><input type="checkbox" value="webp" checked><span>WebP</span></label>
+              <label class="checkbox-label"><input type="checkbox" value="bmp" checked><span>BMP</span></label>
+              <label class="checkbox-label"><input type="checkbox" value="svg" checked><span>SVG</span></label>
+              <label class="checkbox-label"><input type="checkbox" value="ico" checked><span>ICO</span></label>
+              <label class="checkbox-label"><input type="checkbox" value="tiff" checked><span>TIFF</span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <h3>Kích thước (pixels)</h3>
+          <div class="size-inputs">
+            <div class="input-group">
+              <label>Chiều rộng</label>
+              <div class="range-inputs">
+                <input type="number" id="minWidth" placeholder="Min" min="0">
+                <span>-</span>
+                <input type="number" id="maxWidth" placeholder="Max" min="0">
+              </div>
+            </div>
+            <div class="input-group">
+              <label>Chiều cao</label>
+              <div class="range-inputs">
+                <input type="number" id="minHeight" placeholder="Min" min="0">
+                <span>-</span>
+                <input type="number" id="maxHeight" placeholder="Max" min="0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <h3>Dung lượng (KB)</h3>
+          <div class="size-inputs">
+            <div class="input-group">
+              <div class="range-inputs">
+                <input type="number" id="minSize" placeholder="Min KB" min="0">
+                <span>-</span>
+                <input type="number" id="maxSize" placeholder="Max KB" min="0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button id="btnScan" class="btn btn-success btn-large" disabled>Quét ảnh</button>
+          <button id="btnReset" class="btn btn-secondary">Đặt lại</button>
+        </div>
+      </aside>
+
+      <!-- Right Panel - Results -->
+      <section class="results-panel">
+        <div class="results-header">
+          <h3>Kết quả <span id="resultCount">(0 ảnh)</span></h3>
+          <div class="results-actions">
+            <button id="btnExport" class="btn btn-secondary" disabled>Xuất danh sách</button>
+            <button id="btnCopyPaths" class="btn btn-secondary" disabled>Copy đường dẫn</button>
+          </div>
+        </div>
+        
+        <div id="loadingIndicator" class="loading hidden">
+          <div class="spinner"></div>
+          <p>Đang quét...</p>
+        </div>
+
+        <div id="resultsGrid" class="results-grid">
+          <div class="empty-state">
+            <p>Chọn thư mục và nhấn "Quét ảnh" để bắt đầu</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+      <span id="statusText">Sẵn sàng</span>
+      <span id="scanProgress"></span>
+    </footer>
+  </div>
+
+  <script src="/js/neutralino.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
