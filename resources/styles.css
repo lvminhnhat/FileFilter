@@ -38,7 +38,22 @@ body {
   background: var(--primary);
   color: white;
   padding: 12px 20px;
-  text-align: center;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  text-align: left;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .header h1 {
@@ -50,6 +65,35 @@ body {
   font-size: 12px;
   opacity: 0.9;
   margin-top: 2px;
+}
+
+.version-badge {
+  background: rgba(255,255,255,0.2);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.version-badge.update-available {
+  background: #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.btn-small:hover {
+  background: rgba(255,255,255,0.3);
 }
 
 .main-content {
@@ -394,4 +438,19 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background: var(--panel-bg);
+  border-top: 1px solid var(--border);
+}
+
+.pagination span {
+  font-size: 13px;
+  color: var(--text);
 }

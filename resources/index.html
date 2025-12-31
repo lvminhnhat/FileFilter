@@ -10,8 +10,16 @@
   <div class="app-container">
     <!-- Header -->
     <header class="header">
-      <h1>File Filter</h1>
-      <p>Công cụ lọc ảnh theo kích thước và dung lượng</p>
+      <div class="header-content">
+        <div class="header-left">
+          <h1>File Filter</h1>
+          <p>Công cụ lọc ảnh theo kích thước và dung lượng</p>
+        </div>
+        <div class="header-right">
+          <span id="versionInfo" class="version-badge">v0.0.3</span>
+          <button id="btnCheckUpdate" class="btn btn-small" title="Kiểm tra cập nhật">Check Update</button>
+        </div>
+      </div>
     </header>
 
     <!-- Main Content -->
@@ -116,6 +124,12 @@
           <div class="empty-state">
             <p>Chọn thư mục và nhấn "Quét ảnh" để bắt đầu</p>
           </div>
+        </div>
+        
+        <div id="pagination" class="pagination hidden">
+          <button id="btnPrevPage" class="btn btn-secondary" disabled>Trang trước</button>
+          <span id="pageInfo">Trang 1/1</span>
+          <button id="btnNextPage" class="btn btn-secondary" disabled>Trang sau</button>
         </div>
       </section>
     </main>

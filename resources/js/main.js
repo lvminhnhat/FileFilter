@@ -1,5 +1,11 @@
+const APP_VERSION = '0.0.3';
+const GITHUB_REPO = 'lvminhnhat/FileFilter';
+
 let selectedFolder = '';
 let imageResults = [];
+let currentPage = 0;
+const ITEMS_PER_PAGE = 50;
+let isLoadingThumbs = false;
 
 const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif'];
 
@@ -7,6 +13,8 @@ Neutralino.init();
 
 Neutralino.events.on('ready', () => {
   initEventListeners();
+  checkForUpdates();
+  document.getElementById('appVersion').textContent = `v${APP_VERSION}`;
 });
 
 function initEventListeners() {
@@ -19,6 +27,49 @@ function initEventListeners() {
   document.getElementById('btnMoveTo').addEventListener('click', () => copyOrMoveImages('move'));
   document.getElementById('formatAll').addEventListener('change', toggleFormatList);
   document.getElementById('enableSizeFilter').addEventListener('change', toggleSizeFilter);
+  
+  const resultsGrid = document.getElementById('resultsGrid');
+  resultsGrid.addEventListener('scroll', handleScroll);
+}
+
+async function checkForUpdates() {
+  try {
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+    if (!response.ok) return;
+    
+    const data = await response.json();
+    const latestVersion = data.tag_name.replace('v', '');
+    
+    if (compareVersions(latestVersion, APP_VERSION) > 0) {
+      showUpdateNotification(latestVersion, data.html_url);
+    }
+  } catch (err) {
+    console.log('Không thể kiểm tra cập nhật:', err);
+  }
+}
+
+function compareVersions(v1, v2) {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    if (p1 > p2) return 1;
+    if (p1 < p2) return -1;
+  }
+  return 0;
+}
+
+function showUpdateNotification(newVersion, downloadUrl) {
+  const notification = document.createElement('div');
+  notification.className = 'update-notification';
+  notification.innerHTML = `
+    <span>Phiên bản mới ${newVersion} đã có!</span>
+    <button onclick="window.open('${downloadUrl}')">Tải về</button>
+    <button onclick="this.parentElement.remove()" class="btn-close">×</button>
+  `;
+  document.body.appendChild(notification);
 }
 
 async function selectFolder() {
@@ -52,6 +103,7 @@ async function startScan() {
   showLoading(true);
   setStatus('Đang quét...');
   imageResults = [];
+  currentPage = 0;
 
   try {
     await scanDirectory(selectedFolder, filters, filters.includeSubfolders);
@@ -197,13 +249,16 @@ async function loadImageAsBase64(filePath) {
 function arrayBufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const chunkSize = 8192;
+  
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
   }
   return btoa(binary);
 }
 
-async function displayResults() {
+function displayResults() {
   const grid = document.getElementById('resultsGrid');
   document.getElementById('resultCount').textContent = `(${imageResults.length} ảnh)`;
 
@@ -214,34 +269,89 @@ async function displayResults() {
   }
 
   toggleResultButtons(true);
+  currentPage = 0;
+  grid.innerHTML = '';
+  
+  loadMoreItems();
+}
 
-  grid.innerHTML = imageResults.map((img, idx) => `
-    <div class="image-card" onclick="openImage(${idx})" title="${img.path}">
-      <div class="thumb" id="thumb-${idx}">
+function loadMoreItems() {
+  if (isLoadingThumbs) return;
+  
+  const grid = document.getElementById('resultsGrid');
+  const start = currentPage * ITEMS_PER_PAGE;
+  const end = Math.min(start + ITEMS_PER_PAGE, imageResults.length);
+  
+  if (start >= imageResults.length) return;
+  
+  const fragment = document.createDocumentFragment();
+  
+  for (let i = start; i < end; i++) {
+    const img = imageResults[i];
+    const card = document.createElement('div');
+    card.className = 'image-card';
+    card.onclick = () => openImage(i);
+    card.title = img.path;
+    card.innerHTML = `
+      <div class="thumb" id="thumb-${i}">
         <span class="loading-thumb">...</span>
       </div>
       <div class="info">
         <div class="name">${img.name}</div>
         <div class="meta">${img.width}x${img.height} | ${formatSize(img.size)}</div>
       </div>
-    </div>
-  `).join('');
-
-  loadThumbnails();
+    `;
+    fragment.appendChild(card);
+  }
+  
+  grid.appendChild(fragment);
+  currentPage++;
+  
+  loadVisibleThumbnails(start, end);
 }
 
-async function loadThumbnails() {
-  for (let i = 0; i < imageResults.length; i++) {
-    const img = imageResults[i];
-    const thumbEl = document.getElementById(`thumb-${i}`);
-    if (!thumbEl) continue;
+async function loadVisibleThumbnails(start, end) {
+  isLoadingThumbs = true;
+  
+  const batchSize = 5;
+  for (let i = start; i < end; i += batchSize) {
+    const batch = [];
+    for (let j = i; j < Math.min(i + batchSize, end); j++) {
+      batch.push(loadSingleThumbnail(j));
+    }
+    await Promise.all(batch);
+    
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  
+  isLoadingThumbs = false;
+}
 
+async function loadSingleThumbnail(index) {
+  const img = imageResults[index];
+  const thumbEl = document.getElementById(`thumb-${index}`);
+  if (!thumbEl) return;
+
+  try {
     const dataUrl = await loadImageAsBase64(img.path);
-    if (dataUrl) {
-      thumbEl.innerHTML = `<img src="${dataUrl}" alt="${img.name}" loading="lazy">`;
-    } else {
+    if (dataUrl && thumbEl) {
+      thumbEl.innerHTML = `<img src="${dataUrl}" alt="${img.name}">`;
+    } else if (thumbEl) {
       thumbEl.innerHTML = '<span>Không tải được</span>';
     }
+  } catch {
+    if (thumbEl) {
+      thumbEl.innerHTML = '<span>Lỗi</span>';
+    }
+  }
+}
+
+function handleScroll(e) {
+  const grid = e.target;
+  const scrollBottom = grid.scrollHeight - grid.scrollTop - grid.clientHeight;
+  
+  if (scrollBottom < 200 && !isLoadingThumbs) {
+    loadMoreItems();
   }
 }
 
@@ -281,7 +391,8 @@ async function copyOrMoveImages(action) {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const img of imageResults) {
+    for (let i = 0; i < imageResults.length; i++) {
+      const img = imageResults[i];
       try {
         const fileName = img.name;
         const destPath = destFolder + '/' + fileName;
@@ -294,6 +405,7 @@ async function copyOrMoveImages(action) {
         }
         
         successCount++;
+        setStatus(`Đang ${action === 'copy' ? 'copy' : 'di chuyển'}: ${successCount}/${imageResults.length}`);
       } catch (err) {
         console.error(`Lỗi ${action} file:`, img.path, err);
         errorCount++;
@@ -365,6 +477,7 @@ function resetFilters() {
   toggleResultButtons(false);
   selectedFolder = '';
   imageResults = [];
+  currentPage = 0;
   setStatus('Đã đặt lại bộ lọc');
 }
 
