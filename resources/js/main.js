@@ -1,4 +1,4 @@
-const APP_VERSION = '0.0.3';
+const APP_VERSION = '0.0.4';
 const GITHUB_REPO = 'lvminhnhat/FileFilter';
 
 let selectedFolder = '';
@@ -27,6 +27,9 @@ function initEventListeners() {
   document.getElementById('btnMoveTo').addEventListener('click', () => copyOrMoveImages('move'));
   document.getElementById('formatAll').addEventListener('change', toggleFormatList);
   document.getElementById('enableSizeFilter').addEventListener('change', toggleSizeFilter);
+  document.getElementById('enableDimensionFilter').addEventListener('change', toggleDimensionFilter);
+  document.getElementById('enableWidthFilter').addEventListener('change', toggleWidthFilter);
+  document.getElementById('enableHeightFilter').addEventListener('change', toggleHeightFilter);
   
   const resultsGrid = document.getElementById('resultsGrid');
   resultsGrid.addEventListener('scroll', handleScroll);
@@ -96,6 +99,25 @@ function toggleSizeFilter(e) {
   sizeInputs.classList.toggle('hidden', !e.target.checked);
 }
 
+function toggleDimensionFilter(e) {
+  const dimensionInputs = document.getElementById('dimensionFilterInputs');
+  dimensionInputs.classList.toggle('hidden', !e.target.checked);
+}
+
+function toggleWidthFilter(e) {
+  const widthInputs = document.getElementById('widthInputs');
+  widthInputs.querySelectorAll('input[type="number"]').forEach(input => {
+    input.disabled = !e.target.checked;
+  });
+}
+
+function toggleHeightFilter(e) {
+  const heightInputs = document.getElementById('heightInputs');
+  heightInputs.querySelectorAll('input[type="number"]').forEach(input => {
+    input.disabled = !e.target.checked;
+  });
+}
+
 async function startScan() {
   if (!selectedFolder) return;
 
@@ -132,14 +154,20 @@ function getFilters() {
   }
 
   const enableSizeFilter = document.getElementById('enableSizeFilter').checked;
+  const enableDimensionFilter = document.getElementById('enableDimensionFilter').checked;
+  const enableWidthFilter = enableDimensionFilter && document.getElementById('enableWidthFilter').checked;
+  const enableHeightFilter = enableDimensionFilter && document.getElementById('enableHeightFilter').checked;
 
   return {
     includeSubfolders: document.getElementById('includeSubfolders').checked,
     formats,
-    minWidth: parseInt(document.getElementById('minWidth').value) || 0,
-    maxWidth: parseInt(document.getElementById('maxWidth').value) || Infinity,
-    minHeight: parseInt(document.getElementById('minHeight').value) || 0,
-    maxHeight: parseInt(document.getElementById('maxHeight').value) || Infinity,
+    enableDimensionFilter,
+    enableWidthFilter,
+    enableHeightFilter,
+    minWidth: enableWidthFilter ? (parseInt(document.getElementById('minWidth').value) || 0) : 0,
+    maxWidth: enableWidthFilter ? (parseInt(document.getElementById('maxWidth').value) || Infinity) : Infinity,
+    minHeight: enableHeightFilter ? (parseInt(document.getElementById('minHeight').value) || 0) : 0,
+    maxHeight: enableHeightFilter ? (parseInt(document.getElementById('maxHeight').value) || Infinity) : Infinity,
     enableSizeFilter,
     minSize: enableSizeFilter ? (parseInt(document.getElementById('minSize').value) || 0) * 1024 : 0,
     maxSize: enableSizeFilter ? (parseInt(document.getElementById('maxSize').value) || Infinity) * 1024 : Infinity
@@ -182,8 +210,12 @@ async function processFile(filePath, filters) {
     const dimensions = await getImageDimensions(filePath, ext);
 
     if (dimensions) {
-      if (dimensions.width < filters.minWidth || dimensions.width > filters.maxWidth) return;
-      if (dimensions.height < filters.minHeight || dimensions.height > filters.maxHeight) return;
+      if (filters.enableWidthFilter) {
+        if (dimensions.width < filters.minWidth || dimensions.width > filters.maxWidth) return;
+      }
+      if (filters.enableHeightFilter) {
+        if (dimensions.height < filters.minHeight || dimensions.height > filters.maxHeight) return;
+      }
     }
 
     imageResults.push({
@@ -463,6 +495,10 @@ function resetFilters() {
   document.getElementById('formatAll').checked = true;
   document.getElementById('formatList').classList.add('hidden');
   document.querySelectorAll('#formatList input').forEach(cb => cb.checked = true);
+  document.getElementById('enableDimensionFilter').checked = false;
+  document.getElementById('dimensionFilterInputs').classList.add('hidden');
+  document.getElementById('enableWidthFilter').checked = true;
+  document.getElementById('enableHeightFilter').checked = true;
   document.getElementById('minWidth').value = '';
   document.getElementById('maxWidth').value = '';
   document.getElementById('minHeight').value = '';

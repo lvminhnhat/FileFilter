@@ -16,7 +16,7 @@
           <p>Công cụ lọc ảnh theo kích thước và dung lượng</p>
         </div>
         <div class="header-right">
-          <span id="versionInfo" class="version-badge">v0.0.3</span>
+          <span id="versionInfo" class="version-badge">v0.0.4</span>
           <button id="btnCheckUpdate" class="btn btn-small" title="Kiểm tra cập nhật">Check Update</button>
         </div>
       </div>
@@ -60,18 +60,28 @@
 
         <div class="filter-section">
           <h3>Kích thước (pixels)</h3>
-          <div class="size-inputs">
+          <label class="checkbox-label">
+            <input type="checkbox" id="enableDimensionFilter">
+            <span>Lọc theo kích thước</span>
+          </label>
+          <div id="dimensionFilterInputs" class="size-inputs hidden">
             <div class="input-group">
-              <label>Chiều rộng</label>
-              <div class="range-inputs">
+              <label class="checkbox-label inline">
+                <input type="checkbox" id="enableWidthFilter" checked>
+                <span>Chiều rộng</span>
+              </label>
+              <div class="range-inputs" id="widthInputs">
                 <input type="number" id="minWidth" placeholder="Min" min="0">
                 <span>-</span>
                 <input type="number" id="maxWidth" placeholder="Max" min="0">
               </div>
             </div>
             <div class="input-group">
-              <label>Chiều cao</label>
-              <div class="range-inputs">
+              <label class="checkbox-label inline">
+                <input type="checkbox" id="enableHeightFilter" checked>
+                <span>Chiều cao</span>
+              </label>
+              <div class="range-inputs" id="heightInputs">
                 <input type="number" id="minHeight" placeholder="Min" min="0">
                 <span>-</span>
                 <input type="number" id="maxHeight" placeholder="Max" min="0">

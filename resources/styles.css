@@ -436,6 +436,16 @@ body {
   background: #d97706;
 }
 
+.checkbox-label.inline {
+  display: inline-flex;
+  margin-right: 8px;
+}
+
+.range-inputs input:disabled {
+  opacity: 0.5;
+  background: #f1f5f9;
+}
+
 .hidden {
   display: none !important;
 }
