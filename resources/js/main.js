@@ -1,4 +1,4 @@
-const APP_VERSION = '0.0.4';
+const APP_VERSION = '0.0.5';
 const GITHUB_REPO = 'lvminhnhat/FileFilter';
 
 let selectedFolder = '';
@@ -25,6 +25,7 @@ function initEventListeners() {
   document.getElementById('btnCopyPaths').addEventListener('click', copyPaths);
   document.getElementById('btnCopyTo').addEventListener('click', () => copyOrMoveImages('copy'));
   document.getElementById('btnMoveTo').addEventListener('click', () => copyOrMoveImages('move'));
+  document.getElementById('btnCheckUpdate').addEventListener('click', manualCheckUpdate);
   document.getElementById('formatAll').addEventListener('change', toggleFormatList);
   document.getElementById('enableSizeFilter').addEventListener('change', toggleSizeFilter);
   document.getElementById('enableDimensionFilter').addEventListener('change', toggleDimensionFilter);
@@ -33,6 +34,30 @@ function initEventListeners() {
   
   const resultsGrid = document.getElementById('resultsGrid');
   resultsGrid.addEventListener('scroll', handleScroll);
+}
+
+async function manualCheckUpdate() {
+  setStatus('Đang kiểm tra cập nhật...');
+  try {
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+    if (!response.ok) {
+      setStatus('Không thể kiểm tra cập nhật');
+      return;
+    }
+    
+    const data = await response.json();
+    const latestVersion = data.tag_name.replace('v', '');
+    
+    if (compareVersions(latestVersion, APP_VERSION) > 0) {
+      showUpdateNotification(latestVersion, data.html_url);
+      setStatus(`Có phiên bản mới: ${latestVersion}`);
+    } else {
+      setStatus('Bạn đang dùng phiên bản mới nhất!');
+    }
+  } catch (err) {
+    console.log('Không thể kiểm tra cập nhật:', err);
+    setStatus('Lỗi kết nối khi kiểm tra cập nhật');
+  }
 }
 
 async function checkForUpdates() {
@@ -207,14 +232,17 @@ async function processFile(filePath, filters) {
       if (fileSize < filters.minSize || fileSize > filters.maxSize) return;
     }
 
-    const dimensions = await getImageDimensions(filePath, ext);
+    let dimensions = null;
+    if (filters.enableWidthFilter || filters.enableHeightFilter) {
+      dimensions = await getImageDimensions(filePath, ext);
 
-    if (dimensions) {
-      if (filters.enableWidthFilter) {
-        if (dimensions.width < filters.minWidth || dimensions.width > filters.maxWidth) return;
-      }
-      if (filters.enableHeightFilter) {
-        if (dimensions.height < filters.minHeight || dimensions.height > filters.maxHeight) return;
+      if (dimensions) {
+        if (filters.enableWidthFilter) {
+          if (dimensions.width < filters.minWidth || dimensions.width > filters.maxWidth) return;
+        }
+        if (filters.enableHeightFilter) {
+          if (dimensions.height < filters.minHeight || dimensions.height > filters.maxHeight) return;
+        }
       }
     }
 
@@ -419,12 +447,16 @@ async function copyOrMoveImages(action) {
 
     if (!destFolder) return;
 
-    setStatus(`Đang ${action === 'copy' ? 'copy' : 'di chuyển'} ${imageResults.length} ảnh...`);
+    const total = imageResults.length;
     let successCount = 0;
     let errorCount = 0;
+    
+    showProgress(true, action === 'copy' ? 'Đang copy ảnh...' : 'Đang di chuyển ảnh...');
 
-    for (let i = 0; i < imageResults.length; i++) {
+    for (let i = 0; i < total; i++) {
       const img = imageResults[i];
+      updateProgress(i + 1, total, img.name);
+      
       try {
         const fileName = img.name;
         const destPath = destFolder + '/' + fileName;
@@ -437,12 +469,13 @@ async function copyOrMoveImages(action) {
         }
         
         successCount++;
-        setStatus(`Đang ${action === 'copy' ? 'copy' : 'di chuyển'}: ${successCount}/${imageResults.length}`);
       } catch (err) {
         console.error(`Lỗi ${action} file:`, img.path, err);
         errorCount++;
       }
     }
+
+    showProgress(false);
 
     if (action === 'move' && successCount > 0) {
       imageResults = [];
@@ -452,8 +485,31 @@ async function copyOrMoveImages(action) {
     setStatus(`Hoàn thành! ${action === 'copy' ? 'Đã copy' : 'Đã di chuyển'} ${successCount} ảnh${errorCount > 0 ? `, ${errorCount} lỗi` : ''}`);
   } catch (err) {
     console.error('Lỗi:', err);
+    showProgress(false);
     setStatus('Lỗi: ' + err.message);
   }
+}
+
+function showProgress(show, title = '') {
+  const modal = document.getElementById('progressModal');
+  if (show) {
+    document.getElementById('progressTitle').textContent = title;
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressPercent').textContent = '0%';
+    document.getElementById('progressCount').textContent = '0/0';
+    document.getElementById('progressCurrentFile').textContent = '';
+    modal.classList.remove('hidden');
+  } else {
+    modal.classList.add('hidden');
+  }
+}
+
+function updateProgress(current, total, fileName) {
+  const percent = Math.round((current / total) * 100);
+  document.getElementById('progressBar').style.width = percent + '%';
+  document.getElementById('progressPercent').textContent = percent + '%';
+  document.getElementById('progressCount').textContent = `${current}/${total}`;
+  document.getElementById('progressCurrentFile').textContent = fileName;
 }
 
 async function exportResults() {

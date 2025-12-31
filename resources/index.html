@@ -16,7 +16,7 @@
           <p>Công cụ lọc ảnh theo kích thước và dung lượng</p>
         </div>
         <div class="header-right">
-          <span id="versionInfo" class="version-badge">v0.0.4</span>
+          <span id="versionInfo" class="version-badge">v0.0.5</span>
           <button id="btnCheckUpdate" class="btn btn-small" title="Kiểm tra cập nhật">Check Update</button>
         </div>
       </div>
@@ -149,6 +149,21 @@
       <span id="statusText">Sẵn sàng</span>
       <span id="scanProgress"></span>
     </footer>
+
+    <div id="progressModal" class="progress-modal hidden">
+      <div class="progress-content">
+        <h4 id="progressTitle">Đang xử lý...</h4>
+        <div class="progress-bar-container">
+          <div id="progressBar" class="progress-bar" style="width: 0%">
+            <span id="progressPercent">0%</span>
+          </div>
+        </div>
+        <div class="progress-info">
+          <span id="progressCurrentFile" class="current-file"></span>
+          <span id="progressCount">0/0</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/js/neutralino.js"></script>
