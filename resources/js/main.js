@@ -1,6 +1,10 @@
 const APP_VERSION = '0.0.7';
 const GITHUB_REPO = 'lvminhnhat/FileFilter';
 
+// Version check cache
+const VERSION_CACHE_KEY = 'filefilter_version_cache';
+const VERSION_CACHE_DURATION = 4 * 60 * 60 * 1000; // 4 hours
+
 let selectedFolder = '';
 let imageResults = [];
 let currentPage = 0;
@@ -865,6 +869,8 @@ async function manualCheckUpdate() {
     const data = await response.json();
     const latestVersion = data.tag_name.replace('v', '');
     
+    saveVersionCache(latestVersion, data.html_url);
+    
     if (compareVersions(latestVersion, APP_VERSION) > 0) {
       showUpdateNotification(latestVersion, data.html_url);
       setStatus(`Có phiên bản mới: ${latestVersion}`);
@@ -878,6 +884,14 @@ async function manualCheckUpdate() {
 }
 
 async function checkForUpdates() {
+  const cached = getVersionCache();
+  if (cached) {
+    if (compareVersions(cached.version, APP_VERSION) > 0) {
+      showUpdateNotification(cached.version, cached.url);
+    }
+    return;
+  }
+  
   try {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
     if (!response.ok) return;
@@ -885,11 +899,41 @@ async function checkForUpdates() {
     const data = await response.json();
     const latestVersion = data.tag_name.replace('v', '');
     
+    saveVersionCache(latestVersion, data.html_url);
+    
     if (compareVersions(latestVersion, APP_VERSION) > 0) {
       showUpdateNotification(latestVersion, data.html_url);
     }
   } catch (err) {
     console.log('Không thể kiểm tra cập nhật:', err);
+  }
+}
+
+function getVersionCache() {
+  try {
+    const cached = localStorage.getItem(VERSION_CACHE_KEY);
+    if (!cached) return null;
+    
+    const data = JSON.parse(cached);
+    if (Date.now() - data.timestamp > VERSION_CACHE_DURATION) {
+      localStorage.removeItem(VERSION_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveVersionCache(version, url) {
+  try {
+    localStorage.setItem(VERSION_CACHE_KEY, JSON.stringify({
+      version,
+      url,
+      timestamp: Date.now()
+    }));
+  } catch {
+    // localStorage not available
   }
 }
 
@@ -1049,9 +1093,10 @@ async function processFile(filePath, filters) {
       if (fileSize < filters.minSize || fileSize > filters.maxSize) return;
     }
 
-    const dimensions = await getImageDimensions(filePath, ext);
-
+    let dimensions = null;
+    
     if (filters.enableWidthFilter || filters.enableHeightFilter) {
+      dimensions = await getImageDimensions(filePath, ext);
       if (dimensions) {
         if (filters.enableWidthFilter) {
           if (dimensions.width < filters.minWidth || dimensions.width > filters.maxWidth) return;
@@ -1168,13 +1213,17 @@ function loadMoreItems() {
     card.className = 'image-card';
     card.onclick = () => openImage(i);
     card.title = img.path;
+    
+    const hasDimensions = img.width > 0 && img.height > 0;
+    const dimensionText = hasDimensions ? `${img.width}x${img.height} | ` : '';
+    
     card.innerHTML = `
       <div class="thumb" id="thumb-${i}">
         <span class="loading-thumb">...</span>
       </div>
       <div class="info">
         <div class="name">${img.name}</div>
-        <div class="meta">${img.width > 0 && img.height > 0 ? `${img.width}x${img.height} | ` : ''}${formatSize(img.size)}</div>
+        <div class="meta" id="meta-${i}">${dimensionText}${formatSize(img.size)}</div>
       </div>
     `;
     fragment.appendChild(card);
@@ -1212,6 +1261,18 @@ async function loadSingleThumbnail(index) {
     const dataUrl = await loadImageAsBase64(img.path);
     if (dataUrl && thumbEl) {
       thumbEl.innerHTML = `<img src="${dataUrl}" alt="${img.name}">`;
+      
+      if (img.width === 0 || img.height === 0) {
+        const dimensions = await getImageDimensionsFromDataUrl(dataUrl);
+        if (dimensions) {
+          img.width = dimensions.width;
+          img.height = dimensions.height;
+          const metaEl = document.getElementById(`meta-${index}`);
+          if (metaEl) {
+            metaEl.textContent = `${dimensions.width}x${dimensions.height} | ${formatSize(img.size)}`;
+          }
+        }
+      }
     } else if (thumbEl) {
       thumbEl.innerHTML = '<span>Không tải được</span>';
     }
@@ -1220,6 +1281,19 @@ async function loadSingleThumbnail(index) {
       thumbEl.innerHTML = '<span>Lỗi</span>';
     }
   }
+}
+
+function getImageDimensionsFromDataUrl(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      resolve(null);
+    };
+    img.src = dataUrl;
+  });
 }
 
 function handleScroll(e) {
