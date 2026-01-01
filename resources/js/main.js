@@ -14,7 +14,7 @@ let compressOutputFolder = '';
 
 const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif'];
 const CONVERTIBLE_FORMATS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
-const COMPRESSIBLE_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
+const COMPRESSIBLE_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tiff', 'tif'];
 
 Neutralino.init();
 
@@ -516,7 +516,7 @@ function updateCompressUI() {
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
         <p>Chọn file hoặc thư mục để nén ảnh</p>
-        <p class="hint">Hỗ trợ: JPG, PNG, WebP</p>
+        <p class="hint">Hỗ trợ: JPG, PNG, WebP, GIF, BMP, TIFF</p>
       </div>
     `;
     document.getElementById('compressSavings').classList.add('hidden');
@@ -658,6 +658,14 @@ async function compressImageByQuality(filePath, quality, outputFolder, keepOrigi
           mimeType = 'image/png';
         } else if (ext === 'webp') {
           mimeType = 'image/webp';
+        } else if (ext === 'gif') {
+          mimeType = 'image/gif';
+        } else if (ext === 'bmp') {
+          mimeType = 'image/jpeg';
+          outputExt = 'jpg';
+        } else if (ext === 'tiff' || ext === 'tif') {
+          mimeType = 'image/jpeg';
+          outputExt = 'jpg';
         } else {
           mimeType = 'image/jpeg';
           outputExt = 'jpg';
@@ -717,8 +725,20 @@ async function compressImageBySize(filePath, targetBytes, outputFolder, keepOrig
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
         
-        let mimeType = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
-        let outputExt = ext === 'png' ? 'png' : (ext === 'webp' ? 'webp' : 'jpg');
+        let mimeType, outputExt;
+        if (ext === 'png') {
+          mimeType = 'image/png';
+          outputExt = 'png';
+        } else if (ext === 'webp') {
+          mimeType = 'image/webp';
+          outputExt = 'webp';
+        } else if (ext === 'gif') {
+          mimeType = 'image/gif';
+          outputExt = 'gif';
+        } else {
+          mimeType = 'image/jpeg';
+          outputExt = 'jpg';
+        }
         
         let quality = 0.9;
         let binaryData;
@@ -738,7 +758,7 @@ async function compressImageBySize(filePath, targetBytes, outputFolder, keepOrig
           attempts++;
         }
         
-        if (binaryData.byteLength > targetBytes && (ext === 'png' || ext === 'webp')) {
+        if (binaryData.byteLength > targetBytes && (ext !== 'jpg' && ext !== 'jpeg')) {
           mimeType = 'image/jpeg';
           outputExt = 'jpg';
           quality = 0.9;
@@ -1029,10 +1049,9 @@ async function processFile(filePath, filters) {
       if (fileSize < filters.minSize || fileSize > filters.maxSize) return;
     }
 
-    let dimensions = null;
-    if (filters.enableWidthFilter || filters.enableHeightFilter) {
-      dimensions = await getImageDimensions(filePath, ext);
+    const dimensions = await getImageDimensions(filePath, ext);
 
+    if (filters.enableWidthFilter || filters.enableHeightFilter) {
       if (dimensions) {
         if (filters.enableWidthFilter) {
           if (dimensions.width < filters.minWidth || dimensions.width > filters.maxWidth) return;
@@ -1155,7 +1174,7 @@ function loadMoreItems() {
       </div>
       <div class="info">
         <div class="name">${img.name}</div>
-        <div class="meta">${img.width}x${img.height} | ${formatSize(img.size)}</div>
+        <div class="meta">${img.width > 0 && img.height > 0 ? `${img.width}x${img.height} | ` : ''}${formatSize(img.size)}</div>
       </div>
     `;
     fragment.appendChild(card);
