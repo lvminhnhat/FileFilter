@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>File Filter - Lọc Ảnh</title>
+  <title>File Filter - Lọc & Xử lý Ảnh</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -13,143 +13,426 @@
       <div class="header-content">
         <div class="header-left">
           <h1>File Filter</h1>
-          <p>Công cụ lọc ảnh theo kích thước và dung lượng</p>
+          <p>Lọc, chuyển đổi và nén ảnh</p>
         </div>
         <div class="header-right">
-          <span id="versionInfo" class="version-badge">v0.0.5</span>
+          <span id="versionInfo" class="version-badge">v1.0.0</span>
           <button id="btnCheckUpdate" class="btn btn-small" title="Kiểm tra cập nhật">Check Update</button>
         </div>
       </div>
     </header>
 
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="filter">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        Lọc Ảnh
+      </button>
+      <button class="tab-btn" data-tab="convert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+        Chuyển Đổi
+      </button>
+      <button class="tab-btn" data-tab="compress">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Nén Ảnh
+      </button>
+    </nav>
+
     <!-- Main Content -->
     <main class="main-content">
-      <!-- Left Panel - Filters -->
-      <aside class="filter-panel">
-        <div class="filter-section">
-          <h3>Thư mục</h3>
-          <div class="folder-select">
-            <input type="text" id="folderPath" placeholder="Chọn thư mục..." readonly>
-            <button id="btnSelectFolder" class="btn btn-primary">Chọn</button>
-          </div>
-          <label class="checkbox-label">
-            <input type="checkbox" id="includeSubfolders" checked>
-            <span>Bao gồm thư mục con</span>
-          </label>
-        </div>
-
-        <div class="filter-section">
-          <h3>Định dạng ảnh</h3>
-          <div class="format-options">
+      <!-- ========== TAB 1: FILTER ========== -->
+      <div class="tab-content active" id="tab-filter">
+        <!-- Left Panel - Filters -->
+        <aside class="filter-panel">
+          <div class="filter-section">
+            <h3>Thư mục</h3>
+            <div class="folder-select">
+              <input type="text" id="folderPath" placeholder="Chọn thư mục..." readonly>
+              <button id="btnSelectFolder" class="btn btn-primary">Chọn</button>
+            </div>
             <label class="checkbox-label">
-              <input type="checkbox" id="formatAll" checked>
-              <span>Tất cả định dạng</span>
+              <input type="checkbox" id="includeSubfolders" checked>
+              <span>Bao gồm thư mục con</span>
             </label>
-            <div id="formatList" class="format-list hidden">
-              <label class="checkbox-label"><input type="checkbox" value="jpg" checked><span>JPG/JPEG</span></label>
-              <label class="checkbox-label"><input type="checkbox" value="png" checked><span>PNG</span></label>
-              <label class="checkbox-label"><input type="checkbox" value="gif" checked><span>GIF</span></label>
-              <label class="checkbox-label"><input type="checkbox" value="webp" checked><span>WebP</span></label>
-              <label class="checkbox-label"><input type="checkbox" value="bmp" checked><span>BMP</span></label>
-              <label class="checkbox-label"><input type="checkbox" value="svg" checked><span>SVG</span></label>
-              <label class="checkbox-label"><input type="checkbox" value="ico" checked><span>ICO</span></label>
-              <label class="checkbox-label"><input type="checkbox" value="tiff" checked><span>TIFF</span></label>
-            </div>
           </div>
-        </div>
 
-        <div class="filter-section">
-          <h3>Kích thước (pixels)</h3>
-          <label class="checkbox-label">
-            <input type="checkbox" id="enableDimensionFilter">
-            <span>Lọc theo kích thước</span>
-          </label>
-          <div id="dimensionFilterInputs" class="size-inputs hidden">
-            <div class="input-group">
-              <label class="checkbox-label inline">
-                <input type="checkbox" id="enableWidthFilter" checked>
-                <span>Chiều rộng</span>
+          <div class="filter-section">
+            <h3>Định dạng ảnh</h3>
+            <div class="format-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="formatAll" checked>
+                <span>Tất cả định dạng</span>
               </label>
-              <div class="range-inputs" id="widthInputs">
-                <input type="number" id="minWidth" placeholder="Min" min="0">
-                <span>-</span>
-                <input type="number" id="maxWidth" placeholder="Max" min="0">
+              <div id="formatList" class="format-list hidden">
+                <label class="checkbox-label"><input type="checkbox" value="jpg" checked><span>JPG/JPEG</span></label>
+                <label class="checkbox-label"><input type="checkbox" value="png" checked><span>PNG</span></label>
+                <label class="checkbox-label"><input type="checkbox" value="gif" checked><span>GIF</span></label>
+                <label class="checkbox-label"><input type="checkbox" value="webp" checked><span>WebP</span></label>
+                <label class="checkbox-label"><input type="checkbox" value="bmp" checked><span>BMP</span></label>
+                <label class="checkbox-label"><input type="checkbox" value="svg" checked><span>SVG</span></label>
+                <label class="checkbox-label"><input type="checkbox" value="ico" checked><span>ICO</span></label>
+                <label class="checkbox-label"><input type="checkbox" value="tiff" checked><span>TIFF</span></label>
               </div>
             </div>
-            <div class="input-group">
-              <label class="checkbox-label inline">
-                <input type="checkbox" id="enableHeightFilter" checked>
-                <span>Chiều cao</span>
+          </div>
+
+          <div class="filter-section">
+            <h3>Kích thước (pixels)</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="enableDimensionFilter">
+              <span>Lọc theo kích thước</span>
+            </label>
+            <div id="dimensionFilterInputs" class="size-inputs hidden">
+              <div class="input-group">
+                <label class="checkbox-label inline">
+                  <input type="checkbox" id="enableWidthFilter" checked>
+                  <span>Chiều rộng</span>
+                </label>
+                <div class="range-inputs" id="widthInputs">
+                  <input type="number" id="minWidth" placeholder="Min" min="0">
+                  <span>-</span>
+                  <input type="number" id="maxWidth" placeholder="Max" min="0">
+                </div>
+              </div>
+              <div class="input-group">
+                <label class="checkbox-label inline">
+                  <input type="checkbox" id="enableHeightFilter" checked>
+                  <span>Chiều cao</span>
+                </label>
+                <div class="range-inputs" id="heightInputs">
+                  <input type="number" id="minHeight" placeholder="Min" min="0">
+                  <span>-</span>
+                  <input type="number" id="maxHeight" placeholder="Max" min="0">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <h3>Dung lượng (KB)</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="enableSizeFilter">
+              <span>Lọc theo dung lượng</span>
+            </label>
+            <div id="sizeFilterInputs" class="size-inputs hidden">
+              <div class="input-group">
+                <div class="range-inputs">
+                  <input type="number" id="minSize" placeholder="Min KB" min="0">
+                  <span>-</span>
+                  <input type="number" id="maxSize" placeholder="Max KB" min="0">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-actions">
+            <button id="btnScan" class="btn btn-success btn-large" disabled>Quét ảnh</button>
+            <button id="btnReset" class="btn btn-secondary">Đặt lại</button>
+          </div>
+        </aside>
+
+        <!-- Right Panel - Results -->
+        <section class="results-panel">
+          <div class="results-header">
+            <h3>Kết quả <span id="resultCount">(0 ảnh)</span></h3>
+            <div class="results-actions">
+              <button id="btnCopyTo" class="btn btn-primary" disabled>Copy ảnh</button>
+              <button id="btnMoveTo" class="btn btn-warning" disabled>Di chuyển ảnh</button>
+              <button id="btnExport" class="btn btn-secondary" disabled>Xuất danh sách</button>
+              <button id="btnCopyPaths" class="btn btn-secondary" disabled>Copy đường dẫn</button>
+            </div>
+          </div>
+          
+          <div id="loadingIndicator" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Đang quét...</p>
+          </div>
+
+          <div id="resultsGrid" class="results-grid">
+            <div class="empty-state">
+              <p>Chọn thư mục và nhấn "Quét ảnh" để bắt đầu</p>
+            </div>
+          </div>
+          
+          <div id="pagination" class="pagination hidden">
+            <button id="btnPrevPage" class="btn btn-secondary" disabled>Trang trước</button>
+            <span id="pageInfo">Trang 1/1</span>
+            <button id="btnNextPage" class="btn btn-secondary" disabled>Trang sau</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========== TAB 2: CONVERT ========== -->
+      <div class="tab-content" id="tab-convert">
+        <aside class="filter-panel">
+          <div class="filter-section">
+            <h3>Chọn ảnh nguồn</h3>
+            <div class="source-options">
+              <button id="btnSelectConvertFiles" class="btn btn-primary btn-block">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                  <polyline points="13 2 13 9 20 9"></polyline>
+                </svg>
+                Chọn file ảnh
+              </button>
+              <button id="btnSelectConvertFolder" class="btn btn-secondary btn-block">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Chọn thư mục
+              </button>
+            </div>
+            <div id="convertSourceInfo" class="source-info">
+              <span>Chưa chọn file</span>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <h3>Định dạng đích</h3>
+            <div class="format-grid">
+              <label class="format-option">
+                <input type="radio" name="convertFormat" value="jpg" checked>
+                <span class="format-badge">JPG</span>
               </label>
-              <div class="range-inputs" id="heightInputs">
-                <input type="number" id="minHeight" placeholder="Min" min="0">
-                <span>-</span>
-                <input type="number" id="maxHeight" placeholder="Max" min="0">
+              <label class="format-option">
+                <input type="radio" name="convertFormat" value="png">
+                <span class="format-badge">PNG</span>
+              </label>
+              <label class="format-option">
+                <input type="radio" name="convertFormat" value="webp">
+                <span class="format-badge">WebP</span>
+              </label>
+              <label class="format-option">
+                <input type="radio" name="convertFormat" value="gif">
+                <span class="format-badge">GIF</span>
+              </label>
+              <label class="format-option">
+                <input type="radio" name="convertFormat" value="bmp">
+                <span class="format-badge">BMP</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <h3>Chất lượng</h3>
+            <div class="quality-control">
+              <input type="range" id="convertQuality" min="1" max="100" value="90" class="quality-slider">
+              <div class="quality-labels">
+                <span>Thấp</span>
+                <span id="convertQualityValue" class="quality-value">90%</span>
+                <span>Cao</span>
+              </div>
+            </div>
+            <p class="hint">Chỉ áp dụng cho JPG và WebP</p>
+          </div>
+
+          <div class="filter-section">
+            <h3>Thư mục đích</h3>
+            <div class="folder-select">
+              <input type="text" id="convertOutputPath" placeholder="Cùng thư mục nguồn" readonly>
+              <button id="btnSelectConvertOutput" class="btn btn-secondary">Chọn</button>
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox" id="convertKeepOriginal" checked>
+              <span>Giữ file gốc</span>
+            </label>
+          </div>
+
+          <div class="filter-actions">
+            <button id="btnStartConvert" class="btn btn-success btn-large" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="17 1 21 5 17 9"></polyline>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                <polyline points="7 23 3 19 7 15"></polyline>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+              </svg>
+              Chuyển đổi
+            </button>
+          </div>
+        </aside>
+
+        <section class="results-panel">
+          <div class="results-header">
+            <h3>Danh sách chuyển đổi <span id="convertCount">(0 ảnh)</span></h3>
+            <div class="results-actions">
+              <button id="btnClearConvertList" class="btn btn-secondary" disabled>Xóa danh sách</button>
+            </div>
+          </div>
+          
+          <div id="convertGrid" class="results-grid">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                <polyline points="17 1 21 5 17 9"></polyline>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                <polyline points="7 23 3 19 7 15"></polyline>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+              </svg>
+              <p>Chọn file hoặc thư mục để chuyển đổi định dạng</p>
+              <p class="hint">Hỗ trợ: JPG, PNG, WebP, GIF, BMP</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========== TAB 3: COMPRESS ========== -->
+      <div class="tab-content" id="tab-compress">
+        <aside class="filter-panel">
+          <div class="filter-section">
+            <h3>Chọn ảnh nguồn</h3>
+            <div class="source-options">
+              <button id="btnSelectCompressFiles" class="btn btn-primary btn-block">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                  <polyline points="13 2 13 9 20 9"></polyline>
+                </svg>
+                Chọn file ảnh
+              </button>
+              <button id="btnSelectCompressFolder" class="btn btn-secondary btn-block">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Chọn thư mục
+              </button>
+            </div>
+            <div id="compressSourceInfo" class="source-info">
+              <span>Chưa chọn file</span>
+            </div>
+          </div>
+
+          <div class="filter-section">
+            <h3>Chế độ nén</h3>
+            <div class="compress-mode-options">
+              <label class="radio-card">
+                <input type="radio" name="compressMode" value="quality" checked>
+                <div class="radio-card-content">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
+                  <span>Theo chất lượng</span>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="compressMode" value="size">
+                <div class="radio-card-content">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span>Theo kích thước</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Quality Mode Options -->
+          <div class="filter-section compress-quality-options">
+            <h3>Mức chất lượng</h3>
+            <div class="quality-presets">
+              <button class="preset-btn" data-quality="30">Thấp<br><small>30%</small></button>
+              <button class="preset-btn" data-quality="50">TB<br><small>50%</small></button>
+              <button class="preset-btn active" data-quality="70">Tốt<br><small>70%</small></button>
+              <button class="preset-btn" data-quality="85">Cao<br><small>85%</small></button>
+            </div>
+            <div class="quality-control">
+              <input type="range" id="compressQuality" min="1" max="100" value="70" class="quality-slider">
+              <div class="quality-labels">
+                <span>Nhỏ hơn</span>
+                <span id="compressQualityValue" class="quality-value">70%</span>
+                <span>Chất lượng cao</span>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="filter-section">
-          <h3>Dung lượng (KB)</h3>
-          <label class="checkbox-label">
-            <input type="checkbox" id="enableSizeFilter">
-            <span>Lọc theo dung lượng</span>
-          </label>
-          <div id="sizeFilterInputs" class="size-inputs hidden">
+          <!-- Size Mode Options -->
+          <div class="filter-section compress-size-options hidden">
+            <h3>Kích thước mục tiêu</h3>
+            <div class="size-presets">
+              <button class="preset-btn" data-size="50">50 KB</button>
+              <button class="preset-btn" data-size="100">100 KB</button>
+              <button class="preset-btn active" data-size="200">200 KB</button>
+              <button class="preset-btn" data-size="500">500 KB</button>
+              <button class="preset-btn" data-size="1024">1 MB</button>
+            </div>
             <div class="input-group">
-              <div class="range-inputs">
-                <input type="number" id="minSize" placeholder="Min KB" min="0">
-                <span>-</span>
-                <input type="number" id="maxSize" placeholder="Max KB" min="0">
-              </div>
+              <label>Hoặc nhập thủ công (KB):</label>
+              <input type="number" id="targetSizeKB" placeholder="VD: 150" min="1" value="200">
+            </div>
+            <p class="hint">Ảnh sẽ được nén để dung lượng không vượt quá mục tiêu</p>
+          </div>
+
+          <div class="filter-section">
+            <h3>Thư mục đích</h3>
+            <div class="folder-select">
+              <input type="text" id="compressOutputPath" placeholder="Cùng thư mục nguồn" readonly>
+              <button id="btnSelectCompressOutput" class="btn btn-secondary">Chọn</button>
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox" id="compressKeepOriginal" checked>
+              <span>Giữ file gốc</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="compressAddSuffix" checked>
+              <span>Thêm hậu tố "_compressed"</span>
+            </label>
+          </div>
+
+          <div class="filter-actions">
+            <button id="btnStartCompress" class="btn btn-success btn-large" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Nén ảnh
+            </button>
+          </div>
+        </aside>
+
+        <section class="results-panel">
+          <div class="results-header">
+            <h3>Danh sách nén <span id="compressCount">(0 ảnh)</span></h3>
+            <div class="results-actions">
+              <span id="compressSavings" class="savings-badge hidden">Tiết kiệm: 0 KB</span>
+              <button id="btnClearCompressList" class="btn btn-secondary" disabled>Xóa danh sách</button>
             </div>
           </div>
-        </div>
-
-        <div class="filter-actions">
-          <button id="btnScan" class="btn btn-success btn-large" disabled>Quét ảnh</button>
-          <button id="btnReset" class="btn btn-secondary">Đặt lại</button>
-        </div>
-      </aside>
-
-      <!-- Right Panel - Results -->
-      <section class="results-panel">
-        <div class="results-header">
-          <h3>Kết quả <span id="resultCount">(0 ảnh)</span></h3>
-          <div class="results-actions">
-            <button id="btnCopyTo" class="btn btn-primary" disabled>Copy ảnh</button>
-            <button id="btnMoveTo" class="btn btn-warning" disabled>Di chuyển ảnh</button>
-            <button id="btnExport" class="btn btn-secondary" disabled>Xuất danh sách</button>
-            <button id="btnCopyPaths" class="btn btn-secondary" disabled>Copy đường dẫn</button>
+          
+          <div id="compressGrid" class="results-grid">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <p>Chọn file hoặc thư mục để nén ảnh</p>
+              <p class="hint">Hỗ trợ: JPG, PNG, WebP</p>
+            </div>
           </div>
-        </div>
-        
-        <div id="loadingIndicator" class="loading hidden">
-          <div class="spinner"></div>
-          <p>Đang quét...</p>
-        </div>
-
-        <div id="resultsGrid" class="results-grid">
-          <div class="empty-state">
-            <p>Chọn thư mục và nhấn "Quét ảnh" để bắt đầu</p>
-          </div>
-        </div>
-        
-        <div id="pagination" class="pagination hidden">
-          <button id="btnPrevPage" class="btn btn-secondary" disabled>Trang trước</button>
-          <span id="pageInfo">Trang 1/1</span>
-          <button id="btnNextPage" class="btn btn-secondary" disabled>Trang sau</button>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
 
     <!-- Status Bar -->
     <footer class="status-bar">
       <span id="statusText">Sẵn sàng</span>
       <span id="scanProgress"></span>
+      <span id="appVersion">v1.0.0</span>
     </footer>
 
+    <!-- Progress Modal -->
     <div id="progressModal" class="progress-modal hidden">
       <div class="progress-content">
         <h4 id="progressTitle">Đang xử lý...</h4>
@@ -162,6 +445,22 @@
           <span id="progressCurrentFile" class="current-file"></span>
           <span id="progressCount">0/0</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="resultModal" class="result-modal hidden">
+      <div class="result-content">
+        <div class="result-icon success">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <h3 id="resultTitle">Hoàn thành!</h3>
+        <p id="resultMessage">Đã xử lý thành công</p>
+        <div id="resultStats" class="result-stats"></div>
+        <button id="btnCloseResult" class="btn btn-primary">Đóng</button>
       </div>
     </div>
   </div>
