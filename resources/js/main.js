@@ -1,4 +1,4 @@
-const APP_VERSION = '0.0.7';
+const APP_VERSION = '0.0.8';
 const GITHUB_REPO = 'lvminhnhat/FileFilter';
 
 // Version check cache
