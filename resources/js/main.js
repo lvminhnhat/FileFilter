@@ -47,6 +47,7 @@ Neutralino.events.on('ready', async () => {
   initTabNavigation();
   initConvertTab();
   initCompressTab();
+  initCheckTab();
   checkForUpdates();
 });
 
@@ -1489,4 +1490,194 @@ function showLoading(show) {
 
 function setStatus(text) {
   document.getElementById('statusText').textContent = text;
+}
+
+let checkResults = [];
+let checkFolder = '';
+
+function initCheckTab() {
+  document.getElementById('btnSelectCheckFolder').onclick = selectCheckFolder;
+  document.getElementById('btnStartCheck').onclick = startFolderCheck;
+  document.getElementById('btnExportCheckResults').onclick = exportCheckResults;
+  document.getElementById('btnCopyCheckPaths').onclick = copyCheckPaths;
+}
+
+async function selectCheckFolder() {
+  try {
+    const folder = await Neutralino.os.showFolderDialog('Chọn thư mục cần kiểm tra');
+    if (folder) {
+      checkFolder = folder;
+      document.getElementById('checkFolderPath').value = folder;
+      document.getElementById('btnStartCheck').disabled = false;
+      setStatus('Đã chọn thư mục: ' + folder);
+    }
+  } catch (err) {
+    console.error('Lỗi chọn thư mục:', err);
+  }
+}
+
+async function startFolderCheck() {
+  if (!checkFolder) return;
+
+  const minCount = parseInt(document.getElementById('minImageCount').value) || 8;
+  const formatFilter = document.getElementById('checkImageFormat').value;
+  const onlyLeafFolders = document.getElementById('checkOnlyLeafFolders').checked;
+
+  setStatus('Đang quét thư mục...');
+  document.getElementById('btnStartCheck').disabled = true;
+  checkResults = [];
+
+  try {
+    const allFolders = await getAllSubfolders(checkFolder);
+    const totalFolders = allFolders.length;
+    let processed = 0;
+
+    const leafFolders = onlyLeafFolders 
+      ? allFolders.filter(f => !allFolders.some(other => other !== f && other.startsWith(f + '/')))
+      : allFolders;
+
+    for (const folder of leafFolders) {
+      const imageCount = await countImagesInFolder(folder, formatFilter);
+      
+      if (imageCount < minCount) {
+        checkResults.push({
+          path: folder,
+          count: imageCount,
+          missing: minCount - imageCount
+        });
+      }
+      
+      processed++;
+      if (processed % 10 === 0) {
+        setStatus(`Đang quét... ${processed}/${leafFolders.length} thư mục`);
+      }
+    }
+
+    checkResults.sort((a, b) => a.count - b.count);
+    displayCheckResults(minCount);
+    setStatus(`Hoàn thành! Tìm thấy ${checkResults.length} thư mục thiếu ảnh`);
+
+  } catch (err) {
+    console.error('Lỗi quét thư mục:', err);
+    setStatus('Lỗi: ' + err.message);
+  }
+
+  document.getElementById('btnStartCheck').disabled = false;
+}
+
+async function getAllSubfolders(rootPath) {
+  const folders = [rootPath];
+  const queue = [rootPath];
+
+  while (queue.length > 0) {
+    const batchSize = Math.min(50, queue.length);
+    const batch = queue.splice(0, batchSize);
+    
+    const results = await Promise.all(batch.map(async (currentPath) => {
+      try {
+        const entries = await Neutralino.filesystem.readDirectory(currentPath);
+        return entries
+          .filter(e => e.type === 'DIRECTORY' && !e.entry.startsWith('.'))
+          .map(e => currentPath + '/' + e.entry);
+      } catch {
+        return [];
+      }
+    }));
+
+    for (const subfolders of results) {
+      folders.push(...subfolders);
+      queue.push(...subfolders);
+    }
+  }
+
+  return folders;
+}
+
+async function countImagesInFolder(folderPath, formatFilter) {
+  try {
+    const entries = await Neutralino.filesystem.readDirectory(folderPath);
+    
+    const extensions = formatFilter === 'all' 
+      ? ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff', 'tif']
+      : [formatFilter];
+
+    return entries.filter(e => {
+      if (e.type !== 'FILE') return false;
+      const ext = e.entry.split('.').pop().toLowerCase();
+      return extensions.includes(ext);
+    }).length;
+
+  } catch {
+    return 0;
+  }
+}
+
+function displayCheckResults(minCount) {
+  const container = document.getElementById('checkResultsGrid');
+  const countEl = document.getElementById('checkResultCount');
+  
+  countEl.textContent = `(${checkResults.length} thư mục)`;
+
+  if (checkResults.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>Tất cả thư mục đều có đủ ảnh!</p></div>';
+    document.getElementById('btnExportCheckResults').disabled = true;
+    document.getElementById('btnCopyCheckPaths').disabled = true;
+    return;
+  }
+
+  document.getElementById('btnExportCheckResults').disabled = false;
+  document.getElementById('btnCopyCheckPaths').disabled = false;
+
+  const html = checkResults.map(r => {
+    const severity = r.count === 0 ? 'danger' : r.count < minCount / 2 ? 'warning' : 'ok';
+    return `
+      <div class="check-result-item" onclick="openFolder('${r.path.replace(/\\/g, '\\\\')}')">
+        <span class="folder-path" title="${r.path}">${r.path}</span>
+        <span class="image-count ${severity}">${r.count} ảnh</span>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `<div class="check-results-list">${html}</div>`;
+}
+
+async function openFolder(path) {
+  try {
+    await Neutralino.os.open(path);
+  } catch (err) {
+    console.error('Không thể mở thư mục:', err);
+  }
+}
+
+async function exportCheckResults() {
+  if (checkResults.length === 0) return;
+
+  try {
+    const savePath = await Neutralino.os.showSaveDialog('Lưu kết quả', {
+      filters: [{ name: 'Text Files', extensions: ['txt'] }]
+    });
+
+    if (savePath) {
+      const content = checkResults
+        .map(r => `${r.path} - ${r.count} files`)
+        .join('\n');
+      
+      await Neutralino.filesystem.writeFile(savePath, content);
+      setStatus('Đã xuất kết quả ra: ' + savePath);
+    }
+  } catch (err) {
+    console.error('Lỗi xuất file:', err);
+  }
+}
+
+async function copyCheckPaths() {
+  if (checkResults.length === 0) return;
+
+  try {
+    const paths = checkResults.map(r => r.path).join('\n');
+    await Neutralino.clipboard.writeText(paths);
+    setStatus('Đã copy ' + checkResults.length + ' đường dẫn');
+  } catch (err) {
+    console.error('Lỗi copy:', err);
+  }
 }
