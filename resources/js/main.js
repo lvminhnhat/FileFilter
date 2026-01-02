@@ -1687,7 +1687,10 @@ async function copyCheckPaths() {
 }
 
 async function flattenFolders() {
-  if (!checkFolder) return;
+  if (!checkFolder) {
+    setStatus('Vui lòng chọn thư mục trước');
+    return;
+  }
 
   const confirmed = await Neutralino.os.showMessageBox(
     'Xác nhận Flatten',
@@ -1698,66 +1701,82 @@ async function flattenFolders() {
 
   if (confirmed !== 'YES') return;
 
-  setStatus('Đang flatten thư mục...');
+  setStatus('Đang quét thư mục...');
   document.getElementById('btnFlattenFolders').disabled = true;
 
   try {
     const allFolders = await getAllSubfolders(checkFolder);
-    const leafFolders = allFolders.filter(f => 
-      !allFolders.some(other => other !== f && other.startsWith(f + '/') && other.startsWith(f + '\\'))
-    );
-
-    const realLeafFolders = [];
-    for (const folder of leafFolders) {
+    
+    const leafFolders = [];
+    for (const folder of allFolders) {
+      if (folder === checkFolder) continue;
       const hasSubDir = await hasSubdirectories(folder);
-      if (!hasSubDir && folder !== checkFolder) {
-        realLeafFolders.push(folder);
+      if (!hasSubDir) {
+        leafFolders.push(folder);
       }
     }
+
+    if (leafFolders.length === 0) {
+      setStatus('Không tìm thấy thư mục lá nào để di chuyển');
+      document.getElementById('btnFlattenFolders').disabled = false;
+      return;
+    }
+
+    setStatus(`Tìm thấy ${leafFolders.length} thư mục lá, đang di chuyển...`);
 
     let moved = 0;
-    const sep = checkFolder.includes('/') ? '/' : '\\';
+    let failed = 0;
+    const isWindows = checkFolder.includes('\\') || checkFolder.match(/^[A-Za-z]:/);
+    const sep = isWindows ? '\\' : '/';
+    const normalizedRoot = checkFolder.replace(/[/\\]+$/, '');
 
-    for (const leafFolder of realLeafFolders) {
-      const folderName = leafFolder.split(/[/\\]/).pop();
-      const parentName = leafFolder.split(/[/\\]/).slice(-2, -1)[0] || '';
+    for (const leafFolder of leafFolders) {
+      const parts = leafFolder.replace(/\\/g, '/').split('/');
+      const folderName = parts[parts.length - 1];
+      const parentName = parts.length >= 2 ? parts[parts.length - 2] : '';
       
       let destName = folderName;
-      let destPath = checkFolder + sep + destName;
+      let destPath = normalizedRoot + sep + destName;
 
-      try {
-        await Neutralino.filesystem.getStats(destPath);
+      const destExists = await pathExists(destPath);
+      if (destExists) {
         destName = parentName + '-' + folderName;
-        destPath = checkFolder + sep + destName;
+        destPath = normalizedRoot + sep + destName;
 
         let k = 1;
-        while (true) {
-          try {
-            await Neutralino.filesystem.getStats(destPath);
-            destName = parentName + '-' + folderName + '-' + k;
-            destPath = checkFolder + sep + destName;
-            k++;
-          } catch {
-            break;
-          }
+        while (await pathExists(destPath)) {
+          destName = parentName + '-' + folderName + '-' + k;
+          destPath = normalizedRoot + sep + destName;
+          k++;
+          if (k > 1000) break;
         }
-      } catch {
       }
 
       try {
-        await Neutralino.os.execCommand(`mv "${leafFolder}" "${destPath}"`);
+        if (isWindows) {
+          await Neutralino.os.execCommand(`cmd /c move /Y "${leafFolder}" "${destPath}"`);
+        } else {
+          await Neutralino.os.execCommand(`mv "${leafFolder}" "${destPath}"`);
+        }
         moved++;
         if (moved % 5 === 0) {
-          setStatus(`Đang di chuyển... ${moved}/${realLeafFolders.length}`);
+          setStatus(`Đang di chuyển... ${moved}/${leafFolders.length}`);
         }
       } catch (err) {
-        console.error('Lỗi di chuyển:', leafFolder, err);
+        console.error('Lỗi di chuyển:', leafFolder, '->', destPath, err);
+        failed++;
       }
     }
 
-    setStatus(`Hoàn thành! Đã di chuyển ${moved} thư mục`);
-    showResultModal('Flatten hoàn thành', `Đã di chuyển ${moved} thư mục lá lên thư mục gốc.`, [
-      { label: 'Thư mục đã xử lý', value: moved }
+    await removeEmptyFoldersInternal(normalizedRoot);
+
+    const msg = failed > 0 
+      ? `Đã di chuyển ${moved} thư mục (${failed} lỗi)`
+      : `Đã di chuyển ${moved} thư mục`;
+    setStatus('Hoàn thành! ' + msg);
+    showResultModal('Flatten hoàn thành', msg, [
+      { label: 'Đã di chuyển', value: moved },
+      { label: 'Lỗi', value: failed }
     ]);
 
   } catch (err) {
@@ -1766,6 +1785,15 @@ async function flattenFolders() {
   }
 
   document.getElementById('btnFlattenFolders').disabled = false;
+}
+
+async function pathExists(path) {
+  try {
+    await Neutralino.filesystem.getStats(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function hasSubdirectories(folderPath) {
@@ -1778,7 +1806,10 @@ async function hasSubdirectories(folderPath) {
 }
 
 async function removeEmptyFolders() {
-  if (!checkFolder) return;
+  if (!checkFolder) {
+    setStatus('Vui lòng chọn thư mục trước');
+    return;
+  }
 
   const confirmed = await Neutralino.os.showMessageBox(
     'Xác nhận xóa',
@@ -1793,42 +1824,52 @@ async function removeEmptyFolders() {
   document.getElementById('btnRemoveEmptyFolders').disabled = true;
 
   try {
-    let totalRemoved = 0;
-    let removedInPass;
-
-    do {
-      removedInPass = 0;
-      const allFolders = await getAllSubfolders(checkFolder);
-      allFolders.sort((a, b) => b.length - a.length);
-
-      for (const folder of allFolders) {
-        if (folder === checkFolder) continue;
-
-        try {
-          const entries = await Neutralino.filesystem.readDirectory(folder);
-          const hasContent = entries.some(e => e.entry !== '.' && e.entry !== '..');
-          
-          if (!hasContent) {
-            await Neutralino.filesystem.removeDirectory(folder);
-            removedInPass++;
-            totalRemoved++;
-          }
-        } catch (err) {
-        }
-      }
-
-      setStatus(`Đã xóa ${totalRemoved} thư mục rỗng...`);
-    } while (removedInPass > 0);
-
+    const totalRemoved = await removeEmptyFoldersInternal(checkFolder);
+    
     setStatus(`Hoàn thành! Đã xóa ${totalRemoved} thư mục rỗng`);
     showResultModal('Xóa thư mục rỗng', `Đã xóa ${totalRemoved} thư mục rỗng.`, [
-      { label: 'Thư mục đã xóa', value: totalRemoved }
+      { label: 'Đã xóa', value: totalRemoved }
     ]);
 
   } catch (err) {
-    console.error('Lỗi xóa thư mục:', err);
+    console.error('Lỗi xóa thư mục rỗng:', err);
     setStatus('Lỗi: ' + err.message);
   }
 
   document.getElementById('btnRemoveEmptyFolders').disabled = false;
+}
+
+async function removeEmptyFoldersInternal(rootPath) {
+  let totalRemoved = 0;
+  let removedInPass;
+  const isWindows = rootPath.includes('\\') || rootPath.match(/^[A-Za-z]:/);
+
+  do {
+    removedInPass = 0;
+    const allFolders = await getAllSubfolders(rootPath);
+    allFolders.sort((a, b) => b.length - a.length);
+
+    for (const folder of allFolders) {
+      if (folder === rootPath) continue;
+
+      try {
+        const entries = await Neutralino.filesystem.readDirectory(folder);
+        const realEntries = entries.filter(e => e.entry !== '.' && e.entry !== '..');
+        
+        if (realEntries.length === 0) {
+          if (isWindows) {
+            await Neutralino.os.execCommand(`cmd /c rmdir /Q "${folder}"`);
+          } else {
+            await Neutralino.os.execCommand(`rmdir "${folder}"`);
+          }
+          removedInPass++;
+          totalRemoved++;
+        }
+      } catch (err) {
+        console.error('Lỗi xóa thư mục:', folder, err);
+      }
+    }
+  } while (removedInPass > 0);
+
+  return totalRemoved;
 }
