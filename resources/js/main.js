@@ -1500,6 +1500,8 @@ function initCheckTab() {
   document.getElementById('btnStartCheck').onclick = startFolderCheck;
   document.getElementById('btnExportCheckResults').onclick = exportCheckResults;
   document.getElementById('btnCopyCheckPaths').onclick = copyCheckPaths;
+  document.getElementById('btnFlattenFolders').onclick = flattenFolders;
+  document.getElementById('btnRemoveEmptyFolders').onclick = removeEmptyFolders;
 }
 
 async function selectCheckFolder() {
@@ -1509,6 +1511,8 @@ async function selectCheckFolder() {
       checkFolder = folder;
       document.getElementById('checkFolderPath').value = folder;
       document.getElementById('btnStartCheck').disabled = false;
+      document.getElementById('btnFlattenFolders').disabled = false;
+      document.getElementById('btnRemoveEmptyFolders').disabled = false;
       setStatus('Đã chọn thư mục: ' + folder);
     }
   } catch (err) {
@@ -1680,4 +1684,151 @@ async function copyCheckPaths() {
   } catch (err) {
     console.error('Lỗi copy:', err);
   }
+}
+
+async function flattenFolders() {
+  if (!checkFolder) return;
+
+  const confirmed = await Neutralino.os.showMessageBox(
+    'Xác nhận Flatten',
+    'Thao tác này sẽ di chuyển TẤT CẢ thư mục lá lên thư mục gốc và không thể hoàn tác.\n\nBạn có chắc chắn muốn tiếp tục?',
+    'YES_NO',
+    'WARNING'
+  );
+
+  if (confirmed !== 'YES') return;
+
+  setStatus('Đang flatten thư mục...');
+  document.getElementById('btnFlattenFolders').disabled = true;
+
+  try {
+    const allFolders = await getAllSubfolders(checkFolder);
+    const leafFolders = allFolders.filter(f => 
+      !allFolders.some(other => other !== f && other.startsWith(f + '/') && other.startsWith(f + '\\'))
+    );
+
+    const realLeafFolders = [];
+    for (const folder of leafFolders) {
+      const hasSubDir = await hasSubdirectories(folder);
+      if (!hasSubDir && folder !== checkFolder) {
+        realLeafFolders.push(folder);
+      }
+    }
+
+    let moved = 0;
+    const sep = checkFolder.includes('/') ? '/' : '\\';
+
+    for (const leafFolder of realLeafFolders) {
+      const folderName = leafFolder.split(/[/\\]/).pop();
+      const parentName = leafFolder.split(/[/\\]/).slice(-2, -1)[0] || '';
+      
+      let destName = folderName;
+      let destPath = checkFolder + sep + destName;
+
+      try {
+        await Neutralino.filesystem.getStats(destPath);
+        destName = parentName + '-' + folderName;
+        destPath = checkFolder + sep + destName;
+
+        let k = 1;
+        while (true) {
+          try {
+            await Neutralino.filesystem.getStats(destPath);
+            destName = parentName + '-' + folderName + '-' + k;
+            destPath = checkFolder + sep + destName;
+            k++;
+          } catch {
+            break;
+          }
+        }
+      } catch {
+      }
+
+      try {
+        await Neutralino.os.execCommand(`mv "${leafFolder}" "${destPath}"`);
+        moved++;
+        if (moved % 5 === 0) {
+          setStatus(`Đang di chuyển... ${moved}/${realLeafFolders.length}`);
+        }
+      } catch (err) {
+        console.error('Lỗi di chuyển:', leafFolder, err);
+      }
+    }
+
+    setStatus(`Hoàn thành! Đã di chuyển ${moved} thư mục`);
+    showResultModal('Flatten hoàn thành', `Đã di chuyển ${moved} thư mục lá lên thư mục gốc.`, [
+      { label: 'Thư mục đã xử lý', value: moved }
+    ]);
+
+  } catch (err) {
+    console.error('Lỗi flatten:', err);
+    setStatus('Lỗi: ' + err.message);
+  }
+
+  document.getElementById('btnFlattenFolders').disabled = false;
+}
+
+async function hasSubdirectories(folderPath) {
+  try {
+    const entries = await Neutralino.filesystem.readDirectory(folderPath);
+    return entries.some(e => e.type === 'DIRECTORY');
+  } catch {
+    return false;
+  }
+}
+
+async function removeEmptyFolders() {
+  if (!checkFolder) return;
+
+  const confirmed = await Neutralino.os.showMessageBox(
+    'Xác nhận xóa',
+    'Thao tác này sẽ XÓA TẤT CẢ thư mục rỗng và không thể hoàn tác.\n\nBạn có chắc chắn muốn tiếp tục?',
+    'YES_NO',
+    'WARNING'
+  );
+
+  if (confirmed !== 'YES') return;
+
+  setStatus('Đang xóa thư mục rỗng...');
+  document.getElementById('btnRemoveEmptyFolders').disabled = true;
+
+  try {
+    let totalRemoved = 0;
+    let removedInPass;
+
+    do {
+      removedInPass = 0;
+      const allFolders = await getAllSubfolders(checkFolder);
+      allFolders.sort((a, b) => b.length - a.length);
+
+      for (const folder of allFolders) {
+        if (folder === checkFolder) continue;
+
+        try {
+          const entries = await Neutralino.filesystem.readDirectory(folder);
+          const hasContent = entries.some(e => e.entry !== '.' && e.entry !== '..');
+          
+          if (!hasContent) {
+            await Neutralino.filesystem.removeDirectory(folder);
+            removedInPass++;
+            totalRemoved++;
+          }
+        } catch (err) {
+        }
+      }
+
+      setStatus(`Đã xóa ${totalRemoved} thư mục rỗng...`);
+    } while (removedInPass > 0);
+
+    setStatus(`Hoàn thành! Đã xóa ${totalRemoved} thư mục rỗng`);
+    showResultModal('Xóa thư mục rỗng', `Đã xóa ${totalRemoved} thư mục rỗng.`, [
+      { label: 'Thư mục đã xóa', value: totalRemoved }
+    ]);
+
+  } catch (err) {
+    console.error('Lỗi xóa thư mục:', err);
+    setStatus('Lỗi: ' + err.message);
+  }
+
+  document.getElementById('btnRemoveEmptyFolders').disabled = false;
 }
