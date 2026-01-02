@@ -1,5 +1,24 @@
-const APP_VERSION = '0.0.8';
-const GITHUB_REPO = 'lvminhnhat/FileFilter';
+let APP_VERSION = '0.0.9';
+let GITHUB_REPO = 'lvminhnhat/FileFilter';
+
+async function loadVersionInfo() {
+  try {
+    const response = await fetch('/version.json');
+    const data = await response.json();
+    APP_VERSION = data.version;
+    GITHUB_REPO = data.github;
+    updateVersionDisplay();
+  } catch (e) {
+    console.log('Using default version');
+  }
+}
+
+function updateVersionDisplay() {
+  const versionBadge = document.getElementById('versionInfo');
+  const appVersionEl = document.getElementById('appVersion');
+  if (versionBadge) versionBadge.textContent = `v${APP_VERSION}`;
+  if (appVersionEl) appVersionEl.textContent = `v${APP_VERSION}`;
+}
 
 // Version check cache
 const VERSION_CACHE_KEY = 'filefilter_version_cache';
@@ -22,13 +41,13 @@ const COMPRESSIBLE_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tiff'
 
 Neutralino.init();
 
-Neutralino.events.on('ready', () => {
+Neutralino.events.on('ready', async () => {
+  await loadVersionInfo();
   initEventListeners();
   initTabNavigation();
   initConvertTab();
   initCompressTab();
   checkForUpdates();
-  document.getElementById('appVersion').textContent = `v${APP_VERSION}`;
 });
 
 function initTabNavigation() {
