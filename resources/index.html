@@ -144,6 +144,30 @@
             </div>
           </div>
 
+          <div class="filter-section">
+            <h3>Tên file</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="enableNameFilter">
+              <span>Lọc theo tên file</span>
+            </label>
+            <div id="nameFilterInputs" class="name-filter-inputs hidden">
+              <div class="input-group">
+                <input type="text" id="nameKeyword" placeholder="Nhập từ khóa..." class="keyword-input">
+              </div>
+              <div class="name-filter-options">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="nameContains" checked>
+                  <span>Chứa từ khóa</span>
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="nameExclude">
+                  <span>Loại trừ từ khóa</span>
+                </label>
+              </div>
+              <p class="hint">Dùng dấu phẩy (,) để tìm nhiều từ khóa</p>
+            </div>
+          </div>
+
           <div class="filter-actions">
             <button id="btnScan" class="btn btn-success btn-large" disabled>Quét ảnh</button>
             <button id="btnReset" class="btn btn-secondary">Đặt lại</button>
@@ -157,6 +181,7 @@
             <div class="results-actions">
               <button id="btnCopyTo" class="btn btn-primary" disabled>Copy ảnh</button>
               <button id="btnMoveTo" class="btn btn-warning" disabled>Di chuyển ảnh</button>
+              <button id="btnDeleteImages" class="btn btn-danger" disabled>Xóa ảnh</button>
               <button id="btnExport" class="btn btn-secondary" disabled>Xuất danh sách</button>
               <button id="btnCopyPaths" class="btn btn-secondary" disabled>Copy đường dẫn</button>
             </div>
@@ -187,7 +212,14 @@
           <div class="filter-section">
             <h3>Chọn ảnh nguồn</h3>
             <div class="source-options">
-              <button id="btnSelectConvertFiles" class="btn btn-primary btn-block">
+              <button id="btnUseFilteredForConvert" class="btn btn-success btn-block btn-use-filtered" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Dùng ảnh đã lọc (<span id="filteredCountForConvert">0</span>)
+              </button>
+              <div class="source-divider"><span>hoặc</span></div>
+              <button id="btnSelectConvertFiles" class="btn btn-secondary btn-block">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
                   <polyline points="13 2 13 9 20 9"></polyline>
@@ -299,7 +331,14 @@
           <div class="filter-section">
             <h3>Chọn ảnh nguồn</h3>
             <div class="source-options">
-              <button id="btnSelectCompressFiles" class="btn btn-primary btn-block">
+              <button id="btnUseFilteredForCompress" class="btn btn-success btn-block btn-use-filtered" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Dùng ảnh đã lọc (<span id="filteredCountForCompress">0</span>)
+              </button>
+              <div class="source-divider"><span>hoặc</span></div>
+              <button id="btnSelectCompressFiles" class="btn btn-secondary btn-block">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
                   <polyline points="13 2 13 9 20 9"></polyline>

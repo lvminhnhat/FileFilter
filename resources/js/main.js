@@ -73,12 +73,14 @@ function initEventListeners() {
   document.getElementById('btnCopyPaths').addEventListener('click', copyPaths);
   document.getElementById('btnCopyTo').addEventListener('click', () => copyOrMoveImages('copy'));
   document.getElementById('btnMoveTo').addEventListener('click', () => copyOrMoveImages('move'));
+  document.getElementById('btnDeleteImages').addEventListener('click', deleteFilteredImages);
   document.getElementById('btnCheckUpdate').addEventListener('click', manualCheckUpdate);
   document.getElementById('formatAll').addEventListener('change', toggleFormatList);
   document.getElementById('enableSizeFilter').addEventListener('change', toggleSizeFilter);
   document.getElementById('enableDimensionFilter').addEventListener('change', toggleDimensionFilter);
   document.getElementById('enableWidthFilter').addEventListener('change', toggleWidthFilter);
   document.getElementById('enableHeightFilter').addEventListener('change', toggleHeightFilter);
+  document.getElementById('enableNameFilter').addEventListener('change', toggleNameFilter);
   
   document.getElementById('btnCloseResult').addEventListener('click', () => {
     document.getElementById('resultModal').classList.add('hidden');
@@ -94,6 +96,7 @@ function initConvertTab() {
   document.getElementById('btnSelectConvertOutput').addEventListener('click', selectConvertOutputFolder);
   document.getElementById('btnStartConvert').addEventListener('click', startConversion);
   document.getElementById('btnClearConvertList').addEventListener('click', clearConvertList);
+  document.getElementById('btnUseFilteredForConvert').addEventListener('click', useFilteredForConvert);
   
   const qualitySlider = document.getElementById('convertQuality');
   qualitySlider.addEventListener('input', (e) => {
@@ -107,6 +110,7 @@ function initCompressTab() {
   document.getElementById('btnSelectCompressOutput').addEventListener('click', selectCompressOutputFolder);
   document.getElementById('btnStartCompress').addEventListener('click', startCompression);
   document.getElementById('btnClearCompressList').addEventListener('click', clearCompressList);
+  document.getElementById('btnUseFilteredForCompress').addEventListener('click', useFilteredForCompress);
   
   document.querySelectorAll('input[name="compressMode"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
@@ -323,6 +327,22 @@ function clearConvertList() {
   convertOutputFolder = '';
   document.getElementById('convertOutputPath').value = '';
   updateConvertUI();
+}
+
+function useFilteredForConvert() {
+  if (imageResults.length === 0) return;
+  
+  convertFiles = imageResults
+    .filter(img => CONVERTIBLE_FORMATS.includes(img.ext.toLowerCase()))
+    .map(img => ({
+      path: img.path,
+      name: img.name,
+      size: img.size,
+      ext: img.ext
+    }));
+  
+  updateConvertUI();
+  setStatus(`Đã thêm ${convertFiles.length} ảnh từ kết quả lọc`);
 }
 
 async function startConversion() {
@@ -595,6 +615,22 @@ function clearCompressList() {
   compressOutputFolder = '';
   document.getElementById('compressOutputPath').value = '';
   updateCompressUI();
+}
+
+function useFilteredForCompress() {
+  if (imageResults.length === 0) return;
+  
+  compressFiles = imageResults
+    .filter(img => COMPRESSIBLE_FORMATS.includes(img.ext.toLowerCase()))
+    .map(img => ({
+      path: img.path,
+      name: img.name,
+      size: img.size,
+      ext: img.ext
+    }));
+  
+  updateCompressUI();
+  setStatus(`Đã thêm ${compressFiles.length} ảnh từ kết quả lọc`);
 }
 
 async function startCompression() {
@@ -1024,6 +1060,11 @@ function toggleHeightFilter(e) {
   });
 }
 
+function toggleNameFilter(e) {
+  const nameInputs = document.getElementById('nameFilterInputs');
+  nameInputs.classList.toggle('hidden', !e.target.checked);
+}
+
 async function startScan() {
   if (!selectedFolder) return;
 
@@ -1063,6 +1104,15 @@ function getFilters() {
   const enableDimensionFilter = document.getElementById('enableDimensionFilter').checked;
   const enableWidthFilter = enableDimensionFilter && document.getElementById('enableWidthFilter').checked;
   const enableHeightFilter = enableDimensionFilter && document.getElementById('enableHeightFilter').checked;
+  const enableNameFilter = document.getElementById('enableNameFilter').checked;
+
+  let nameKeywords = [];
+  if (enableNameFilter) {
+    const keywordInput = document.getElementById('nameKeyword').value.trim();
+    if (keywordInput) {
+      nameKeywords = keywordInput.split(',').map(k => k.trim().toLowerCase()).filter(k => k.length > 0);
+    }
+  }
 
   return {
     includeSubfolders: document.getElementById('includeSubfolders').checked,
@@ -1076,7 +1126,11 @@ function getFilters() {
     maxHeight: enableHeightFilter ? (parseInt(document.getElementById('maxHeight').value) || Infinity) : Infinity,
     enableSizeFilter,
     minSize: enableSizeFilter ? (parseInt(document.getElementById('minSize').value) || 0) * 1024 : 0,
-    maxSize: enableSizeFilter ? (parseInt(document.getElementById('maxSize').value) || Infinity) * 1024 : Infinity
+    maxSize: enableSizeFilter ? (parseInt(document.getElementById('maxSize').value) || Infinity) * 1024 : Infinity,
+    enableNameFilter,
+    nameKeywords,
+    nameContains: enableNameFilter && document.getElementById('nameContains').checked,
+    nameExclude: enableNameFilter && document.getElementById('nameExclude').checked
   };
 }
 
@@ -1104,6 +1158,20 @@ async function processFile(filePath, filters) {
   const ext = filePath.split('.').pop().toLowerCase();
 
   if (!filters.formats.includes(ext)) return;
+
+  const fileName = filePath.split('/').pop().toLowerCase();
+
+  if (filters.enableNameFilter && filters.nameKeywords.length > 0) {
+    const matchesKeyword = filters.nameKeywords.some(keyword => fileName.includes(keyword));
+    
+    if (filters.nameContains && !filters.nameExclude) {
+      if (!matchesKeyword) return;
+    } else if (filters.nameExclude && !filters.nameContains) {
+      if (matchesKeyword) return;
+    } else if (filters.nameContains && filters.nameExclude) {
+      if (!matchesKeyword) return;
+    }
+  }
 
   try {
     const stats = await Neutralino.filesystem.getStats(filePath);
@@ -1206,14 +1274,27 @@ function displayResults() {
   if (imageResults.length === 0) {
     grid.innerHTML = '<div class="empty-state"><p>Không tìm thấy ảnh phù hợp</p></div>';
     toggleResultButtons(false);
+    updateFilteredCountBadges();
     return;
   }
 
   toggleResultButtons(true);
+  updateFilteredCountBadges();
   currentPage = 0;
   grid.innerHTML = '';
   
   loadMoreItems();
+}
+
+function updateFilteredCountBadges() {
+  const convertibleCount = imageResults.filter(img => CONVERTIBLE_FORMATS.includes(img.ext.toLowerCase())).length;
+  const compressibleCount = imageResults.filter(img => COMPRESSIBLE_FORMATS.includes(img.ext.toLowerCase())).length;
+  
+  document.getElementById('filteredCountForConvert').textContent = convertibleCount;
+  document.getElementById('filteredCountForCompress').textContent = compressibleCount;
+  
+  document.getElementById('btnUseFilteredForConvert').disabled = convertibleCount === 0;
+  document.getElementById('btnUseFilteredForCompress').disabled = compressibleCount === 0;
 }
 
 function loadMoreItems() {
@@ -1330,6 +1411,7 @@ function toggleResultButtons(enabled) {
   document.getElementById('btnCopyPaths').disabled = !enabled;
   document.getElementById('btnCopyTo').disabled = !enabled;
   document.getElementById('btnMoveTo').disabled = !enabled;
+  document.getElementById('btnDeleteImages').disabled = !enabled;
 }
 
 function formatSize(bytes) {
@@ -1398,6 +1480,48 @@ async function copyOrMoveImages(action) {
     showProgress(false);
     setStatus('Lỗi: ' + err.message);
   }
+}
+
+async function deleteFilteredImages() {
+  if (imageResults.length === 0) return;
+
+  const total = imageResults.length;
+  
+  const confirmed = await Neutralino.os.showMessageBox(
+    'Xác nhận xóa',
+    `Bạn có chắc chắn muốn xóa ${total} ảnh đã lọc?\n\nHành động này không thể hoàn tác!`,
+    'YES_NO',
+    'WARNING'
+  );
+
+  if (confirmed !== 'YES') return;
+
+  let successCount = 0;
+  let errorCount = 0;
+  
+  showProgress(true, 'Đang xóa ảnh...');
+
+  for (let i = 0; i < total; i++) {
+    const img = imageResults[i];
+    updateProgress(i + 1, total, img.name);
+    
+    try {
+      await Neutralino.filesystem.removeFile(img.path);
+      successCount++;
+    } catch (err) {
+      console.error('Lỗi xóa file:', img.path, err);
+      errorCount++;
+    }
+  }
+
+  showProgress(false);
+
+  if (successCount > 0) {
+    imageResults = [];
+    displayResults();
+  }
+
+  setStatus(`Hoàn thành! Đã xóa ${successCount} ảnh${errorCount > 0 ? `, ${errorCount} lỗi` : ''}`);
 }
 
 function showProgress(show, title = '') {
@@ -1477,6 +1601,7 @@ function resetFilters() {
   document.getElementById('resultsGrid').innerHTML = '<div class="empty-state"><p>Chọn thư mục và nhấn "Quét ảnh" để bắt đầu</p></div>';
   document.getElementById('resultCount').textContent = '(0 ảnh)';
   toggleResultButtons(false);
+  updateFilteredCountBadges();
   selectedFolder = '';
   imageResults = [];
   currentPage = 0;
